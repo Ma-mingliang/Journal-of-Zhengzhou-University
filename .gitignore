@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Large files
+*.rar
+*.zip
+*.tar.gz
+
+# PDF source (keep generated docs)
+td-mpc2-arxiv.pdf
+
+# Temp files
+~$*
+*.tmp
