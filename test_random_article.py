@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 import tempfile
+import copy
 
 # ============================================================
 # 格式常量（模板实测值）
@@ -326,6 +327,24 @@ def init_styles(doc):
         jc.set(qn('w:val'), 'both')
 
 
+def _get_image_rel_ids(element):
+    """从 XML 元素中提取图片关系 ID"""
+    rel_ids = []
+    for blip in element.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}blip'):
+        rid = blip.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+        if rid:
+            rel_ids.append(rid)
+    return rel_ids
+
+
+def _replace_rel_id(element, old_rid, new_rid):
+    """替换 XML 元素中的关系 ID"""
+    ns_r = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    for blip in element.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}blip'):
+        if blip.get(f'{{{ns_r}}}embed') == old_rid:
+            blip.set(f'{{{ns_r}}}embed', new_rid)
+
+
 # ============================================================
 # 生成随机测试文章
 # ============================================================
@@ -337,9 +356,52 @@ if doc.paragraphs:
     el = doc.paragraphs[0]._element
     el.getparent().remove(el)
 
-# ===== Section 0: 标题 + 作者 + 摘要（单栏）=====
+# ===== Section 0: 封面（从封面.docx 原样复制）=====
 setup_section(doc.sections[0], cols=1)
 
+# 读取封面文档并复制内容（含图片）
+cover_path = os.path.join(os.path.dirname(__file__), '封面.docx')
+if os.path.exists(cover_path):
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    cover_doc = Document(cover_path)
+    body = doc.element.body
+    # 获取 body 的第一个子元素，用于插入到开头
+    first_child = body[0] if len(body) > 0 else None
+    # 从后往前遍历封面元素，保持顺序地插入到开头
+    cover_elements = []
+    for element in cover_doc.element.body:
+        tag = element.tag.split('}')[-1] if '}' in element.tag else element.tag
+        if tag in ('p', 'tbl'):
+            cover_elements.append(element)
+    # 按顺序插入到 body 开头
+    for element in cover_elements:
+        tag = element.tag.split('}')[-1] if '}' in element.tag else element.tag
+        if tag == 'p':
+            new_p = copy.deepcopy(element)
+            # 复制图片关系
+            for rel_id in _get_image_rel_ids(element):
+                rel = cover_doc.part.rels[rel_id]
+                if "image" in rel.reltype:
+                    img_part = rel.target_part
+                    new_rid = doc.part.relate_to(img_part, RT.IMAGE)
+                    _replace_rel_id(new_p, rel_id, new_rid)
+            if first_child is not None:
+                first_child.addprevious(new_p)
+            else:
+                body.append(new_p)
+        elif tag == 'tbl':
+            new_tbl = copy.deepcopy(element)
+            if first_child is not None:
+                first_child.addprevious(new_tbl)
+            else:
+                body.append(new_tbl)
+
+# 封面后分节
+sec_cover_end = doc.add_section()
+setup_section(sec_cover_end, cols=1)
+set_continuous(sec_cover_end)
+
+# ===== Section 1: 标题 + 作者 + 摘要（单栏）=====
 # 标题（18pt，Heading 1 样式，居中）
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -387,10 +449,10 @@ set_font(label, '黑体', 'Times New Roman', SIZE_ABSTRACT, bold=True)
 content = p.add_run('深度强化学习；多机器人系统；路径规划；多智能体协同；近端策略优化')
 set_font(content, '宋体', 'Times New Roman', SIZE_ABSTRACT)
 
-# ===== Section 1: 双栏正文 =====
-sec1 = doc.add_section()
-setup_section(sec1, cols=2)
-set_continuous(sec1)
+# ===== Section 2: 双栏正文 =====
+sec2 = doc.add_section()
+setup_section(sec2, cols=2)
+set_continuous(sec2)
 
 # 0 引言
 make_heading_1(doc, '0 引言')
@@ -513,10 +575,10 @@ make_body(doc,
     '实现了在复杂环境中的高效协同规划。实验结果验证了所提方法的有效性和优越性。'
     '未来工作将探索更复杂的动态环境和异构机器人系统的协同规划问题。')
 
-# ===== Section 2: 参考文献（双栏）=====
-sec2 = doc.add_section()
-setup_section(sec2, cols=2)
-set_continuous(sec2)
+# ===== Section 3: 参考文献（双栏）=====
+sec3 = doc.add_section()
+setup_section(sec3, cols=2)
+set_continuous(sec3)
 
 make_heading_1(doc, '参考文献')
 
@@ -532,9 +594,9 @@ make_ref_en(doc, '[6] DONG X Q, BAI X H, WU Z A, et al. Study on the application
 make_ref_en(doc, '[7] SEMION Z, Konstantin K. Effect of internal curing on durability of concrete[J]. Cement and Concrete Research, 2015, 78: 1-12.')
 make_ref_en(doc, '[8] GIROU E M. Computer algebra in scientific computing[C]//Proceedings of CASC, 2010: 1-12.')
 
-# ===== Section 3: 英文摘要（单栏）=====
-sec3 = doc.add_section()
-setup_section(sec3, cols=1)
+# ===== Section 4: 英文摘要（单栏）=====
+sec4 = doc.add_section()
+setup_section(sec4, cols=1)
 
 # 英文标题（12pt，Heading 1 样式，left align，before=0 after=0）
 p = doc.add_paragraph()
