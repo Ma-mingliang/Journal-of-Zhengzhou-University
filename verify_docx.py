@@ -76,5 +76,5 @@ def analyze(path, label):
 
     print()
 
-analyze(r'E:\Code\Embed\作业\智能机器人控制\马明亮-202522852018965.docx', 'REFERENCE')
+analyze(r'E:\Code\Embed\作业\智能机器人控制\张三-202500000000000.docx', 'REFERENCE')
 analyze(r'E:\Code\Embed\作业\智能机器人控制\TD-MPC2-中文翻译-郑州大学工学报格式.docx', 'GENERATED')
