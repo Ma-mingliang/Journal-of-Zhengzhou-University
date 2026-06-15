@@ -1,5 +1,5 @@
 from docx import Document
-doc = Document(r'E:\Code\Embed\作业\智能机器人控制\马明亮-202522852018965.docx')
+doc = Document(r'E:\Code\Embed\作业\智能机器人控制\张三-202500000000000.docx')
 
 # Print paragraph styles and text
 for i, para in enumerate(doc.paragraphs[:100]):
